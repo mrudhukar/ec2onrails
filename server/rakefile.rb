@@ -35,6 +35,14 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
 # 
   
 @packages = %w(
+  ruby1.8-dev
+  ruby1.8
+  ri1.8
+  rdoc1.8
+  irb1.8
+  libreadline-ruby1.8
+  libruby1.8
+  libopenssl-ruby
   adduser
   bison
   ca-certificates
@@ -43,10 +51,7 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   flex
   gcc
   git-core
-  irb
   less
-  libmysqlclient-dev
-  libmysql-ruby
   libpcre3-dev
   libssl-dev
   libxml2
@@ -58,15 +63,13 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   logrotate
   make
   mailx
-  mysql-client
   mysql-server
+  libmysql-ruby
+  libmysqlclient-dev
   nano
   openssh-server
   postfix
-  rdoc
-  ri
   rsync
-  ruby-full
   subversion
   sysstat
   unzip
@@ -122,6 +125,12 @@ task :install_packages => :require_root do |t|
     run_chroot "aptitude update"
     run_chroot "aptitude install -y #{@packages.join(' ')}"
     run_chroot "aptitude clean"
+
+    # Making the ruby avialable
+    run_chroot "ln -s /usr/bin/ruby1.8 /usr/bin/ruby"
+    run_chroot "ln -s /usr/bin/ri1.8 /usr/bin/ri"
+    run_chroot "ln -s /usr/bin/rdoc1.8 /usr/bin/rdoc"
+    run_chroot "ln -s /usr/bin/irb1.8 /usr/bin/irb"
   end
 end
 
@@ -130,13 +139,15 @@ task :install_gems => [:require_root, :install_packages] do |t|
   unless_completed(t) do
     version = "1.3.6"
     dir = "69365"
-    
+
     filename = "rubygems-#{version}.tgz"
     url = "http://rubyforge.org/frs/download.php/#{dir}/#{filename}"
     run_chroot "sh -c 'cd /tmp && wget -q #{url} && tar zxf #{filename}'"
     run_chroot "sh -c 'cd /tmp/rubygems-#{version} && ruby setup.rb'"
     run_chroot "ln -sf /usr/bin/gem1.8 /usr/bin/gem"
     run_chroot "gem sources -a http://gems.github.com"
+    run_chroot "gem sources -a http://gemcutter.org"
+    run_chroot "gem source -a http://rubygems.org"
     run_chroot "gem install gemcutter --no-rdoc --no-ri"
     run_chroot "gem tumble" # set gemcutter as default gem server
     @rubygems.each do |g|
