@@ -38,7 +38,5 @@ make_dir /mnt/log/god
 make_dir /mnt/log/mysql     mysql:mysql
 make_dir /mnt/log/nginx     nginx:nginx
 
-make_dir /mnt/varnish/
-
 make_dir /mnt/tmp
 chmod 777 /mnt/tmp
