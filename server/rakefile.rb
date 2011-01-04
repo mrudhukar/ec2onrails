@@ -49,14 +49,15 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   libmysql-ruby
   libpcre3-dev
   libssl-dev
+  libxml2
   libxml2-dev
   libxslt1-dev
   libyaml-ruby
   libzlib-ruby
+  libcurl4-openssl-dev
   logrotate
   make
   mailx
-  memcached
   mysql-client
   mysql-server
   nano
@@ -69,7 +70,6 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   subversion
   sysstat
   unzip
-  varnish
   vim
   wget
   xfsprogs
@@ -80,18 +80,12 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
 #       gem if/when he cuts a new release with volume and snapshot
 #       support included
 @rubygems = [
-  "grempe-amazon-ec2",
+  "amazon-ec2",
   "god",
   "RubyInline",
-  "memcache-client",
   "optiflag",
   "passenger",
-  "rails",
-  "rails -v '~> 2.3.4'",
-  "rails -v '~> 2.2.3'",
-  "rails -v '~> 2.1.2'",
-  "rails -v '~> 2.0.5'",
-  "rails -v '~> 1.2.6'",
+  "rails -v '2.3.5'",
   "rake",
   "right_aws"
 ]
@@ -134,17 +128,14 @@ end
 desc "Install required ruby gems inside the image's filesystem"
 task :install_gems => [:require_root, :install_packages] do |t|
   unless_completed(t) do
-    version = "1.3.5"
-    dir = "60718"
+    version = "1.3.6"
+    dir = "69365"
     
     filename = "rubygems-#{version}.tgz"
     url = "http://rubyforge.org/frs/download.php/#{dir}/#{filename}"
     run_chroot "sh -c 'cd /tmp && wget -q #{url} && tar zxf #{filename}'"
     run_chroot "sh -c 'cd /tmp/rubygems-#{version} && ruby setup.rb'"
     run_chroot "ln -sf /usr/bin/gem1.8 /usr/bin/gem"
-    #NOTE: this will update to the most recent rubygems version even if we haven't updated the url here
-    run_chroot "gem update --system --no-rdoc --no-ri"
-    run_chroot "gem update --no-rdoc --no-ri"
     run_chroot "gem sources -a http://gems.github.com"
     run_chroot "gem install gemcutter --no-rdoc --no-ri"
     run_chroot "gem tumble" # set gemcutter as default gem server
@@ -163,13 +154,10 @@ task :install_nginx => [:require_root, :install_packages, :install_gems] do |t|
     # The bug: http://code.google.com/p/phusion-passenger/issues/detail?id=316
     # The solution is to add -mno-tls-direct-seg-refs to the compiler options: 
     #   http://blog.pacharest.com/2009/08/a-bit-technical-nginx-passenger-4gb-seg-fixup/
-    replace_line("#{@fs_dir}/usr/lib/ruby/gems/1.8/gems/passenger-2.2.5/Rakefile", %q(EXTRA_CXXFLAGS = "-Wall -mno-tls-direct-seg-refs #{OPTIMIZATION_FLAGS}"), 50)
-    
-    nginx_version = "nginx-0.7.60"
+    nginx_version = "nginx-0.8.54"
     nginx_tar = "#{nginx_version}.tar.gz"
 
     nginx_img = "http://sysoev.ru/nginx/#{nginx_tar}"
-    fair_bal_img = "http://github.com/gnosek/nginx-upstream-fair/tarball/master"
     src_dir = "/tmp/src/nginx"
     # Make sure the dir is created but empty...lets start afresh
     run_chroot "mkdir -p -m 755 #{src_dir}/ &&  rm -rf #{src_dir}/*" 
@@ -217,7 +205,7 @@ task :configure => [:require_root, :install_software] do |t|
     run_chroot "update-rc.d ec2-every-startup start 92 S ."
     
     # Disable the services that will be managed by god, depending on the roles
-    %w(nginx mysql memcached varnish varnishncsa).each do |service|
+    %w(nginx mysql).each do |service|
       run_chroot "update-rc.d -f #{service} remove"
       run_chroot "update-rc.d #{service} stop 20 2 3 4 5 ."
     end
@@ -250,7 +238,7 @@ def unless_completed(task, &proc)
 end
 
 def run_chroot(command, ignore_error = false)
-  run "chroot '#{@fs_dir}' #{command}", ignore_error
+  run "sudo chroot '#{@fs_dir}' #{command}", ignore_error
 end
 
 def run(command, ignore_error = false)

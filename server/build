@@ -31,15 +31,7 @@
 
 require "fileutils"
 
-EC2UBUNTU_VERSION = 148
-
-unless File.exist? "/mnt/ec2ubuntu"
-  puts "Installing yum..."
-  system "yum install svn -y"
-end
-
 puts "Getting ec2ubuntu build script..."
-system "svn checkout -r #{EC2UBUNTU_VERSION} http://ec2ubuntu.googlecode.com/svn/trunk/ /mnt/ec2ubuntu"
 
 unless system "which rake"
   puts "Installing rake..."
@@ -66,8 +58,6 @@ end
 # except with our own values for distribution, codename, and script
 system <<-EOS
   /mnt/ec2ubuntu/bin/ec2ubuntu-build-ami \
-    --distribution ubuntu \
-    --codename jaunty \
     --script /mnt/ec2onrails/server/rakefile-wrapper \
     #{ec2ubuntu_args.join(' ')}
 EOS
