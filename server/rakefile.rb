@@ -35,14 +35,6 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
 # 
   
 @packages = %w(
-  ruby1.8-dev
-  ruby1.8
-  ri1.8
-  rdoc1.8
-  irb1.8
-  libreadline-ruby1.8
-  libruby1.8
-  libopenssl-ruby
   adduser
   bison
   ca-certificates
@@ -51,6 +43,7 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   flex
   gcc
   git-core
+  irb
   less
   libpcre3-dev
   libssl-dev
@@ -61,6 +54,7 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   libzlib-ruby
   libcurl4-openssl-dev
   logrotate
+  libopenssl-ruby
   make
   mailx
   mysql-server
@@ -69,7 +63,10 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version_helper"
   nano
   openssh-server
   postfix
+  rdoc
+  ri
   rsync
+  ruby-full
   subversion
   sysstat
   unzip
@@ -125,12 +122,6 @@ task :install_packages => :require_root do |t|
     run_chroot "aptitude update"
     run_chroot "aptitude install -y #{@packages.join(' ')}"
     run_chroot "aptitude clean"
-
-    # Making the ruby avialable
-    run_chroot "ln -s /usr/bin/ruby1.8 /usr/bin/ruby"
-    run_chroot "ln -s /usr/bin/ri1.8 /usr/bin/ri"
-    run_chroot "ln -s /usr/bin/rdoc1.8 /usr/bin/rdoc"
-    run_chroot "ln -s /usr/bin/irb1.8 /usr/bin/irb"
   end
 end
 
