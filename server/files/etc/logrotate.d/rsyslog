@@ -1,0 +1,37 @@
+/mnt/log/syslog
+{
+        rotate 7
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+        postrotate
+                reload rsyslog >/dev/null 2>&1 || true
+        endscript
+}
+
+/mnt/log/mail.info
+/mnt/log/mail.warn
+/mnt/log/mail.err
+/mnt/log/mail.log
+/mnt/log/daemon.log
+/mnt/log/kern.log
+/mnt/log/auth.log
+/mnt/log/user.log
+/mnt/log/lpr.log
+/mnt/log/cron.log
+/mnt/log/debug
+/mnt/log/messages
+{
+        rotate 4
+        weekly
+        missingok
+        notifempty
+        compress
+        delaycompress
+        sharedscripts
+        postrotate
+                reload rsyslog >/dev/null 2>&1 || true
+        endscript
+}
