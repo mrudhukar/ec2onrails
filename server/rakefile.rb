@@ -193,7 +193,12 @@ task :configure => [:require_root, :install_gems, :set_file_permissions] do |t|
       rm_rf "#{@fs_dir}/var/log/#{f}"
       run_chroot "ln -sf /mnt/log/#{f} /var/log/#{f}"
     end
-    
+
+    # Removing the default Innodbdatafiles
+    run_chroot "rm /var/lib/mysql/ibdata1"
+    run_chroot "rm /var/lib/mysql/ib_logfile0"
+    run_chroot "rm /var/lib/mysql/ib_logfile1"
+
     # To Enable monit
     run_chroot "perl -pi -e 's/startup=0/startup=1/' /etc/default/monit"
     touch "#{@fs_dir}/ec2onrails-first-boot"
