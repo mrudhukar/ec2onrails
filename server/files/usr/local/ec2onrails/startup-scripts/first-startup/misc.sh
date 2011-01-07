@@ -22,3 +22,7 @@
 chmod 777 /tmp
 
 cp /etc/hosts /etc/hosts.original
+
+#TODO These have to be executables by default
+chmod +x /etc/init.d/apache2
+chmod +x /lib/init/upstart-job

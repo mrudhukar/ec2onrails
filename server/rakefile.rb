@@ -29,14 +29,9 @@ require 'yaml'
 require 'erb'
 require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version"
 
-if `whoami`.strip != 'root'
-  raise "Sorry, this buildfile must be run as root."
-end
-
 @packages = %w(
   adduser
   apache2
-  aptitude
   bison
   ca-certificates
   cron
@@ -46,47 +41,49 @@ end
   git-core
   irb
   less
+  libpcre3-dev
   libdbm-ruby
   libgdbm-ruby
-  libmysql-ruby
   libopenssl-ruby
   libreadline-ruby
   libruby
   libssl-dev
+  libxml2
+  libxml2-dev
+  libxslt1-dev
   libyaml-ruby
   libzlib-ruby
+  libcurl4-openssl-dev
   logrotate
   make
-  mailx
+  bsd-mailx
   memcached
   mysql-client
   mysql-server
+  libmysql-ruby
+  libmysqlclient-dev
   nano
   openssh-server
   postfix
   rdoc
   ri
   rsync
-  ruby
-  ruby1.8-dev
-  subversion
+  ruby-full
   unzip
   vim
   wget
+  monit
 )
 
 @rubygems = [
   "amazon-ec2",
   "aws-s3",
+  "right_aws",
   "memcache-client",
   "mongrel",
   "mongrel_cluster",
   "optiflag",
-  "rails",
-  "rails -v 2.2.2",
-  "rails -v 2.1.2",
-  "rails -v 2.0.5",
-  "rails -v 1.2.6",
+  "rails -v 2.3.5",
   "rake"
 ]
 
@@ -98,14 +95,25 @@ end
 task :default => :configure
 
 desc "Removes all build files"
-task :clean_all do |t|
+task :clean_all => :require_root do |t|
+  puts "Unmounting proc and dev from #{@build_root}..."
+  run "umount #{@build_root}/ubuntu/proc", true
+  run "umount #{@build_root}/ubuntu/dev", true
+
+  puts "Removing #{@build_root}..."
   rm_rf @build_root
 end
 
+task :require_root do |t|
+  if `whoami`.strip != 'root'
+    raise "Sorry, this buildfile must be run as root."
+  end
+end
+
 desc "Use apt-get to install required packages inside the image's filesystem"
-task :install_packages do |t|
+task :install_packages => :require_root do |t|
   unless_completed(t) do
-    #ENV['DEBIAN_FRONTEND'] = 'noninteractive'
+    ENV['DEBIAN_FRONTEND'] = 'noninteractive'
     ENV['LANG'] = ''
     run_chroot "apt-get update"
     run_chroot "apt-get install -y #{@packages.join(' ')}"
@@ -115,26 +123,22 @@ task :install_packages do |t|
 end
 
 desc "Install required ruby gems inside the image's filesystem"
-task :install_gems => [:install_packages] do |t|
+task :install_gems => [:require_root, :install_packages] do |t|
   unless_completed(t) do
-    run_chroot "sh -c 'cd /tmp && wget http://rubyforge.org/frs/download.php/45905/rubygems-1.3.1.tgz && tar zxf rubygems-1.3.1.tgz'"
-    run_chroot "sh -c 'cd /tmp/rubygems-1.3.1 && ruby setup.rb'"
+    version = "1.3.6"
+    dir = "69365"
+
+    filename = "rubygems-#{version}.tgz"
+    url = "http://rubyforge.org/frs/download.php/#{dir}/#{filename}"
+    run_chroot "sh -c 'cd /tmp && wget -q #{url} && tar zxf #{filename}'"
+    run_chroot "sh -c 'cd /tmp/rubygems-#{version} && ruby setup.rb'"
     run_chroot "ln -sf /usr/bin/gem1.8 /usr/bin/gem"
-    run_chroot "gem update --system --no-rdoc --no-ri"
-    run_chroot "gem update --no-rdoc --no-ri"
+    run_chroot "gem source -a http://rubygems.org"
     run_chroot "gem sources -a http://gems.github.com"
+    run_chroot "gem install gemcutter --no-rdoc --no-ri"
     @rubygems.each do |g|
       run_chroot "gem install #{g} --no-rdoc --no-ri"
     end
-  end
-end
-
-desc "Compile and install monit"
-task :install_monit => [:install_packages] do |t|
-  unless_completed(t) do
-    run_chroot "sh -c 'cd /tmp && wget http://www.tildeslash.com/monit/dist/monit-4.10.1.tar.gz'"
-    run_chroot "sh -c 'cd /tmp && tar xzvf monit-4.10.1.tar.gz'"
-    run_chroot "sh -c 'cd /tmp/monit-4.10.1 && ./configure  --sysconfdir=/etc/monit --localstatedir=/var/run && make && make install'"
   end
 end
 
@@ -151,7 +155,7 @@ task :set_file_permissions => :copy_files do |t|
 end
 
 desc "Configure the image"
-task :configure => [:install_gems, :install_monit, :set_file_permissions] do |t|
+task :configure => [:require_root, :install_gems, :set_file_permissions] do |t|
   unless_completed(t) do
     replace("#{@fs_dir}/etc/motd.tail", /!!VERSION!!/, "Version #{@version}")
     
@@ -190,12 +194,9 @@ task :configure => [:install_gems, :install_monit, :set_file_permissions] do |t|
       run_chroot "ln -sf /mnt/log/#{f} /var/log/#{f}"
     end
     
+    # To Enable monit
+    run_chroot "perl -pi -e 's/startup=0/startup=1/' /etc/default/monit"
     touch "#{@fs_dir}/ec2onrails-first-boot"
-    
-    # TODO find out the most correct solution here, there seems to be a bug in
-    # both feisty and gutsy where the dhcp daemon runs as dhcp but the dir
-    # that it tries to write to is owned by root and not writable by others.
-    run_chroot "chown -R dhcp /var/lib/dhcp3"
   end
 end
 
