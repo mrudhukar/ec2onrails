@@ -73,6 +73,7 @@ require "#{File.dirname(__FILE__)}/../gem/lib/ec2onrails/version"
   vim
   wget
   monit
+  sysklogd
 )
 
 @rubygems = [
